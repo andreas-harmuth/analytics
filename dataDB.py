@@ -1,5 +1,6 @@
 from django.db import connection
 import sqlite3
+import numpy as np
 """
     Main database for data
     
@@ -150,14 +151,96 @@ class dataDB:
 
         return status
 
+    def fetch_fluorchromes_data(self, color_list):
+        # As the SQL-syntax has a WHERE statement, than are going to take multiple inputs. This string is generated below
+
+
+
+        sql = """SELECT 
+                    * 
+                FROM 
+                    fluorochromes_all
+                WHERE
+                    colorID IN (
+                    """+",".join(["?"]*len(color_list))+")"
+
+        self.cursor.execute(sql,color_list)
+
+        # temporary dictionary holder
+        temp_dict = {}
+
+
+        # Below we convert all the rows of data into a dictionary where the key is the color name ie, "Alexa Fluor 430"
+        # The value is a (numpy) matrix of the data with the columns: wavelength, excitation, emission
+        for row in self.cursor.fetchall():
+            row = list(row)
+
+            # Here we set the emission to 0 if it is below 0
+            if row[2] < 0:
+                row[2] = 0
+            try:
+                # Todo: Timetest to see if try/except is faster or slower than (if x in dict).
+
+                # If a key does exist for the dictionary then append the row to the correct matrix
+                temp_dict[row[0]] = np.vstack((temp_dict[row[0]], row[1:4]))
+
+            except:
+                # If the key did not exists then the code would fail and jump to this part which init the numpy
+                # matrix as a single row
+
+                temp_dict[row[0]] = np.array(row[1:4])
+
+
+        return temp_dict
+
+
+
+    # Test function that returns all the data
+    def fetch_fluorchromes_data_test(self, color_list):
+        # As the SQL-syntax has a WHERE statement, than are going to take multiple inputs. This string is generated below
+
+
+
+        sql = """SELECT * FROM fluorochromes_all"""
+
+        self.cursor.execute(sql)
+
+        # temporary dictionary holder
+        temp_dict = {}
+
+
+        # Below we convert all the rows of data into a dictionary where the key is the color name ie, "Alexa Fluor 430"
+        # The value is a (numpy) matrix of the data with the columns: wavelength, excitation, emission
+        for row in self.cursor.fetchall():
+            row = list(row)
+
+            # Here we set the emission to 0 if it is below 0
+            if row[2] < 0:
+                row[2] = 0
+            try:
+                # Todo: Timetest to see if try/except is faster or slower than (if x in dict).
+
+                # If a key does exist for the dictionary then append the row to the correct matrix
+                temp_dict[row[0]] = np.vstack((temp_dict[row[0]], row[1:4]))
+
+            except:
+                # If the key did not exists then the code would fail and jump to this part which init the numpy
+                # matrix as a single row
+
+                temp_dict[row[0]] = np.array(row[1:4])
+
+
+        return temp_dict
 
 
 
 
 
 
+# Test list
+#"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
+db = dataDB()
+#db.update_data('./data.txt') # Update the database with given data
 
-
-
-
-
+db.fetch_fluorchromes_data_test(1)
+#db.fetch_fluorchromes_data(["7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"])
