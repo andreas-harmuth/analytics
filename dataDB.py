@@ -13,6 +13,7 @@ def find_needle(needle,haystack):
 
 
     for index,hay in enumerate(haystack):
+        #print(index,hay)
         if needle == hay:
             # return index
             return index
@@ -58,7 +59,7 @@ class dataDB:
 
 
 
-    def fetch_all_data(self):
+    def fetch_all_data(self,by="row"):
 
         # The object that will stored the hashed information. Here the key is the colorID
         data_dict = dict()
@@ -70,12 +71,14 @@ class dataDB:
         # Fetch all the information and hash it
         for row in self.cursor.fetchall():
 
-            # todo: optimize with numpy?
+            # todo: optimize with numpy -> db with 3, and analysis with first?
+            if by == "rows":
 
-            data_dict.setdefault(row[0], []).append(row[1:4])
-            #data_dict.setdefault(row[0], [[],[],[]])[0].append(int(row[1]))
-            #data_dict[row[0]][1].append(float(row[2]))
-            #data_dict[row[0]][2].append(float(row[3]))
+                data_dict.setdefault(row[0], []).append(row[1:4])
+            elif by == "col":
+                data_dict.setdefault(row[0], [[],[],[]])[0].append(int(row[1]))
+                data_dict[row[0]][1].append(float(row[2]))
+                data_dict[row[0]][2].append(float(row[3]))
 
 
 
@@ -88,12 +91,14 @@ class dataDB:
 
     def update_data(self,input_file):
         # Get all the data in a hash table
-        all_data = self.fetch_all_data()
+        all_data = self.fetch_all_data(by="col")
+
 
         # Extract all names
         name_list = [name for name in all_data]
         file = open(input_file, "r")
         f = file.read()
+
 
         # Get all rows
         all_rows = f.split("\n")
@@ -110,8 +115,14 @@ class dataDB:
 
             if data[0] in name_list:
 
+
                 # This is to optimize the next, next (*) if
+                #print(data[0])
+
+                #print(all_data[data[0]][0])
+                #print(all_data[data[0]])
                 needle_index = find_needle(int(data[1]),all_data[data[0]][0])
+
 
                 # If a needle is found
                 if needle_index != -1:
@@ -127,6 +138,7 @@ class dataDB:
                             WHERE colorID=? AND wavelength=? 
                         """
                         status['updated'] +=1
+
                     else:
                         sql = 'false'
 
@@ -142,6 +154,7 @@ class dataDB:
 
             # todo: improve this
             if sql != 'false':
+
                 self.cursor.execute(sql, [float(data[2]),float(data[3]),str(data[0]),int(data[1])])
 
 
@@ -240,7 +253,7 @@ class dataDB:
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
 db = dataDB()
-#db.update_data('./data.txt') # Update the database with given data
+db.update_data('./data.txt') # Update the database with given data
 
-db.fetch_fluorchromes_data_test(1)
+#db.fetch_fluorchromes_data_test(1)
 #db.fetch_fluorchromes_data(["7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"])

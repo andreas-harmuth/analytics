@@ -49,7 +49,7 @@ def spectral_overlapper(r,colors,lasers,c = 0.1):
         #print(l_max)
         l_max = l_max.index(max(l_max))
         #print(l_max)
-        test_list.append(l_max)
+
         # Check
         #print(print(l_max))
         if fluorochromes_all[fc][:, 1][lasers[l_max]-300]/100 >= c:
@@ -63,6 +63,7 @@ def spectral_overlapper(r,colors,lasers,c = 0.1):
 
             print(fc)
             print(300+np.argmax(fluorochromes_all[fc][:,2]))
+            test_list.append((300+np.argmax(fluorochromes_all[fc][:,2]),fc))
             ## Todo: Wrong values??
             print(fluorochromes_all[fc][np.argmax(fluorochromes_all[fc][:, 2]), 2])
             ## append the value (with the 0
@@ -78,13 +79,22 @@ def spectral_overlapper(r,colors,lasers,c = 0.1):
 
 
 
-
+    ## Optimize sort by key if this get's to big. Pair the data in set
     f_sub_order = [f_sub[i] for i in peak_wl]
 
+    # expected output:
+    expect_val = ["Alexa Fluor 405", "Alexa Fluor 350", "eFluor 450", "7-hydroxy-4-methylcoumarin", "Pacific Blue", "1,8-ANS", "eFluor 506", "FITC", "Alexa Fluor 488", "Acridine orange", "Alexa Fluor 430", "Alexa Fluor 514", "Alexa Fluor 532", "Alexa Fluor 555", "eFluor 570", "Alexa Fluor 546", "PE", "alamarBlue", "4-Di-10-ASP", "Alexa Fluor 568", "PE-eFluor 610", "eFluor 615", "PE-Texas Red", "Alexa Fluor 594", "Alexa Fluor 610", "YOYO-3", "7-AAD (7-aminoactinomycin D)", "Alexa Fluor 635", "Alexa Fluor 633", "APC", "PE-Cy5", "eFluor 660", "Alexa Fluor 647", "PE-Cy5.5", "PerCP", "PerCP-Cy5.5", "Alexa Fluor 660", "PerCP-eFluor 710", "eFluor 710", "Alexa Fluor 700", "Alexa Fluor 750", "PE-Cy7", "APC-Alexa Fluor 750", "APC-eFluor 780"]
 
 
-    #for fo, f in zip(f_sub_order, f_sub):
-        #print(fo.keys(), f.keys())
+    #print(test_list)
+    #print(sorted(test_list))
+
+    for fo, f in zip(f_sub_order, expect_val):
+        print(fo.keys(), f)
+
+    print("*"*50)
+    for fo, f in zip(sorted(test_list), expect_val):
+        print(fo[1], f)
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
