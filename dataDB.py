@@ -252,8 +252,8 @@ class dataDB:
 
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
-db = dataDB()
-db.update_data('./data.txt') # Update the database with given data
+#db = dataDB()
+#db.update_data('./data.txt') # Update the database with given data
 
 #db.fetch_fluorchromes_data_test(1)
 #db.fetch_fluorchromes_data(["7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"])
