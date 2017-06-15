@@ -25,6 +25,10 @@ wl | Ex | Em
 
 """
 
+def get_spectra(i):
+    #make class
+    #get_spectra(spectra, i)
+    pass
 
 def spectral_overlapper(r,n,colors,lasers,c = 0.1):
     db = dataDB()
@@ -81,7 +85,7 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
 
             # TODO:(1) Fix this so all elements are multiplied with the excitation that corresponds to the max laser!!!
-            f_sub[fc_i][fc][:,2] = np.multiply(f_sub[fc_i][fc][:,1],f_sub[fc_i][fc][:,2])/100
+            f_sub[fc_i][fc][:,2] = np.multiply(f_sub[fc_i][fc][:,2],f_sub[fc_i][fc][:,1][lasers[l_max]-300])/100
             # Todo:(2). The (1) fix might solve the copy in q(2)
 
             test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
@@ -114,11 +118,70 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
         ********************************************************
         """
 
+    auc_spectra = []
+
+    # for index ind sepectra
+
     for i in range(len(spectra)):
+        # Get the current name of the fluorochrome
         current_fc = list(spectra[i].keys())[0]
-        #print(spectra[i][current_fc])
-        print(current_fc)
+
+        auc_spectra.append(np.sum(spectra[i][current_fc][:, 2]))
+
         #print(np.sum(spectra[i][current_fc], axis=0)[1])
+
+    ################ AUC OVERLAPS (Loss) ######################
+    auc_overlaps = None # A way to know when it has been initialized
+
+    # TODO: Optimize if time > big
+    for i in range(len(spectra)):
+        row = [] # Value placeholder
+
+        # Init the data (so it is easier to access)
+        m_i = spectra[i][list(spectra[i].keys())[0]]
+
+        for ii in range(len(spectra)):
+
+            # Init the data (so it is easier to access)
+            m_ii =spectra[ii][list(spectra[ii].keys())[0]]
+
+            wl_ol = [] # Init list containing wave lengths where i and ii overlap
+            for j in range(len(m_i[:,0])):
+                ## Assume all wl present
+                if m_i[:,2][j]> 0 and m_ii[:,2][j]> 0:
+                    wl_ol.append(j+300)
+
+            if len(wl_ol) == 0:
+                wl_ol = 0
+                wl_ol_vec = []
+            else:
+                wl_ol = [min(wl_ol)-1] + wl_ol + [max(wl_ol)+1]
+                # TODO:(3) Assume base 300 in above??. What happens when wl_ol = 0?
+                wl_ol_vec = [wl - 300 for wl in wl_ol]
+
+            loss_i = m_i[:,2][wl_ol_vec]-m_ii[:,2][wl_ol_vec]
+            ## sum of of the emission where the loss is less or equal to 0
+            loss_i = np.sum([ele for ele,loss in zip(m_i[:,2][wl_ol_vec],loss_i) if loss <= 0])
+
+            loss_i = loss_i/auc_spectra[i]
+
+            loss_ii = m_ii[:, 2][wl_ol_vec] - m_i[:, 2][wl_ol_vec]
+            ## sum of of the emission where the loss is less or equal to 0
+            loss_ii = np.sum([ele for ele, loss in zip(m_ii[:, 2][wl_ol_vec], loss_ii) if loss <= 0])
+
+            loss_ii = loss_ii / auc_spectra[ii ]
+
+            row.append(round(loss_i+loss_ii,8))
+
+
+        if auc_overlaps != None:
+            # If the auc_overlaps have been made an array then add the row to it
+            auc_overlaps = np.vstack((auc_overlaps , np.array(row)))
+
+        else:
+            # If the auc_overlaps is equal to None it means it has not yet been initialized. Therefore it is inited as an array
+            auc_overlaps = np.array(row)
+
 
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R

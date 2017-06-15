@@ -228,8 +228,10 @@ class dataDB:
             row = list(row)
 
             # Here we set the emission to 0 if it is below 0
-            if row[2] < 0:
-                row[2] = 0
+            if row[3] < 0:
+
+                row[3] = 0
+
             try:
                 # Todo: Timetest to see if try/except is faster or slower than (if x in dict).
 
