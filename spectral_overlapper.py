@@ -15,6 +15,8 @@ from analytics.dataDB import dataDB
 import numpy as np
 import itertools, time
 
+from analytics.plot_bestfit import plot_data
+
 # Using base 300 index
 
 
@@ -40,12 +42,14 @@ class Overlap:
 # TODO: class all these fucntions
 def twist_sum(auc_overlaps,comb,c_min):
 
+    # TODO: implement the the search part as well
     counter = 0
     n = len(comb)
+
     for j in range(n-1):
         for i in range(j+1,n):
 
-            #print(auc_overlaps[comb[i], comb[j]])
+
             counter += (auc_overlaps[comb[i], comb[j]])
             if c_min < counter:
                 # no need to do further calculations if the counter is already bigger then then min
@@ -53,7 +57,6 @@ def twist_sum(auc_overlaps,comb,c_min):
                 return counter
 
     return counter
-
 
 
 def get_spectra(i):
@@ -224,24 +227,31 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
     #print(np.sum(auc_overlaps[:,test_temp]))
     #test_temp = [0 ,1,11,16,25]
     #print(twist_sum(auc_overlaps, list(test_temp)))
-    current_min = 100 # Theoretical
 
-    min_list = []
-    start = time.time()
-    for i,comb_ele in enumerate(comb):
-        val = twist_sum(auc_overlaps,list(comb_ele),current_min)
-        if val < current_min:
-            current_min = val
-            min_list = comb_ele
+    if n <= 6:
+        current_min = 100 # Theoretical max?
+        min_list = []
+        start = time.time()
+        for i,comb_ele in enumerate(comb):
 
-    print('Find best')
-    print(time.time()-start)
-    for f_c in list(min_list):
-        print(list(spectra[f_c].keys())[0])
+            val = twist_sum(auc_overlaps,list(comb_ele),current_min)
+            if val < current_min:
+                current_min = val
+                min_list = comb_ele
+
+        print('Find best')
+        print(time.time()-start)
+        #for f_c in list(min_list):
+            #print(list(spectra[f_c].keys())[0])
+    else:
+        print("No algorithm have been developed to handle this n size yet")
+
+    return plot_data([item for i,item in enumerate(spectra) if i in min_list],lasers)
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
 lasers = [355,405,488,561,640]
 start = time.time()
 spectral_overlapper(0,5,1,lasers)
+print("Total time")
 print(time.time()-start)

@@ -81,7 +81,3 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
     G *= 255
     B *= 255
     return (int(R), int(G), int(B))
-
-
-
-print(wavelength_to_rgb(420))
