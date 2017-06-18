@@ -13,6 +13,7 @@
 
 from analytics.dataDB import dataDB
 import numpy as np
+import itertools, time
 
 # Using base 300 index
 
@@ -25,12 +26,43 @@ wl | Ex | Em
 
 """
 
+
+
+
+class Overlap:
+    def __init__(self):
+        self.overlap = []
+
+    def append_auc(self,val):
+        self.overlap.appendO(val)
+
+
+# TODO: class all these fucntions
+def twist_sum(auc_overlaps,comb,c_min):
+
+    counter = 0
+    n = len(comb)
+    for j in range(n-1):
+        for i in range(j+1,n):
+
+            #print(auc_overlaps[comb[i], comb[j]])
+            counter += (auc_overlaps[comb[i], comb[j]])
+            if c_min < counter:
+                # no need to do further calculations if the counter is already bigger then then min
+                #print(j)
+                return counter
+
+    return counter
+
+
+
 def get_spectra(i):
     #make class
     #get_spectra(spectra, i)
     pass
 
 def spectral_overlapper(r,n,colors,lasers,c = 0.1):
+    start = time.time()
     db = dataDB()
     f_counter = 0
     f_sub = [] # Create the sub data as list
@@ -152,7 +184,7 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
                     wl_ol.append(j+300)
 
             if len(wl_ol) == 0:
-                wl_ol = 0
+                #wl_ol = 0
                 wl_ol_vec = []
             else:
                 wl_ol = [min(wl_ol)-1] + wl_ol + [max(wl_ol)+1]
@@ -174,7 +206,7 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
             row.append(round(loss_i+loss_ii,8))
 
 
-        if auc_overlaps != None:
+        if auc_overlaps is not None:
             # If the auc_overlaps have been made an array then add the row to it
             auc_overlaps = np.vstack((auc_overlaps , np.array(row)))
 
@@ -183,8 +215,33 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
             auc_overlaps = np.array(row)
 
 
+    start = time.time()
+    comb = itertools.combinations(range(auc_overlaps.shape[0]), n)
+    print('Combinations')
+    print(time.time() - start)
+
+    #print(auc_overlaps[:,test_temp])
+    #print(np.sum(auc_overlaps[:,test_temp]))
+    #test_temp = [0 ,1,11,16,25]
+    #print(twist_sum(auc_overlaps, list(test_temp)))
+    current_min = 100 # Theoretical
+
+    min_list = []
+    start = time.time()
+    for i,comb_ele in enumerate(comb):
+        val = twist_sum(auc_overlaps,list(comb_ele),current_min)
+        if val < current_min:
+            current_min = val
+            min_list = comb_ele
+
+    print('Find best')
+    print(time.time()-start)
+    for f_c in list(min_list):
+        print(list(spectra[f_c].keys())[0])
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
 lasers = [355,405,488,561,640]
-spectral_overlapper(0,6,1,lasers)
+start = time.time()
+spectral_overlapper(0,5,1,lasers)
+print(time.time()-start)
