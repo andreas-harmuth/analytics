@@ -70,17 +70,14 @@ class dataDB:
 
         # Fetch all the information and hash it
         for row in self.cursor.fetchall():
-
             # todo: optimize with numpy -> db with 3, and analysis with first?
-            if by == "rows":
+            if by == "row":
 
                 data_dict.setdefault(row[0], []).append(row[1:4])
             elif by == "col":
                 data_dict.setdefault(row[0], [[],[],[]])[0].append(int(row[1]))
                 data_dict[row[0]][1].append(float(row[2]))
                 data_dict[row[0]][2].append(float(row[3]))
-
-
 
 
 

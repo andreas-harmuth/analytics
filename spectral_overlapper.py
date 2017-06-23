@@ -65,7 +65,7 @@ def get_spectra(i):
     pass
 
 def spectral_overlapper(r,n,colors,lasers,c = 0.1):
-    start = time.time()
+    #start = time.time()
     db = dataDB()
     f_counter = 0
     f_sub = [] # Create the sub data as list
@@ -83,7 +83,7 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
     """
 
     # In this code the db side have taken care of setting emissions < 0 <- 0
-    fluorochromes_all = db.fetch_fluorchromes_data_test(colors)
+    fluorochromes_all = db.fetch_fluorchromes_data(colors)
 
 
 
@@ -250,8 +250,8 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
-lasers = [355,405,488,561,640]
-start = time.time()
-spectral_overlapper(0,5,1,lasers)
-print("Total time")
-print(time.time()-start)
+#lasers = [355,405,488,561,640]
+#start = time.time()
+#spectral_overlapper(0,5,1,lasers)
+#print("Total time")
+#print(time.time()-start)
