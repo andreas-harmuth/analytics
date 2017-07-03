@@ -65,188 +65,195 @@ def get_spectra(i):
     pass
 
 def spectral_overlapper(r,n,colors,lasers,c = 0.1):
+
+
+
+
     #start = time.time()
     db = dataDB()
-    f_counter = 0
-    f_sub = [] # Create the sub data as list
-    peak_wl = []  # Create the sub array for peak wavelengths
-    test_list = [] # For debugging
+    pre_data_check = db.check_basic_comb_log(n,lasers,colors) # Has the data been evaluated before?
+    if pre_data_check != None:
+        return plot_data(pre_data_check, lasers,pre_data = True)
+        pass
+    else:
+        f_counter = 0
+        f_sub = [] # Create the sub data as list
+        peak_wl = []  # Create the sub array for peak wavelengths
+        test_list = [] # For debugging
 
 
 
-    """
-    ********************************************************
-    *                                                      *
-    *                   EMISSION RECALC                    *
-    *                                                      *
-    ********************************************************
-    """
-
-    # In this code the db side have taken care of setting emissions < 0 <- 0
-    fluorochromes_all = db.fetch_fluorchromes_data(colors)
-
-
-
-    # TODO:(LARS) Optimize by assuming index = i+300?
-
-    # Compared to R we can just access the values directly from a for loop
-
-    for fc_i,fc in enumerate(fluorochromes_all):
-
-        fc_i -= f_counter
-        l_max = [] # Init array
-
-        for laser_wl in lasers:
-
-            # Extra loop compared to R.. Not good.. Not good - again be optimize with comment above
-            for wl_i in range(len(fluorochromes_all[fc][:,0])):
-                # Change this to base 300 index
-                if fluorochromes_all[fc][:,0][wl_i] == laser_wl:
-
-                    l_max.append(fluorochromes_all[fc][:,1][wl_i])
-
-
-        l_max = l_max.index(max(l_max))
-
-        # Check
-
-        if fluorochromes_all[fc][:, 1][lasers[l_max]-300]/100 >= c:
-
-            #TODO:(2)(Lars) should this be cloned??
-            f_sub.append({fc: np.copy(fluorochromes_all[fc])})
-
-            # TODO:(LARS) Do we need all col, or just wv and product of em and ex?
-
-
-
-            # TODO:(1) Fix this so all elements are multiplied with the excitation that corresponds to the max laser!!!
-            f_sub[fc_i][fc][:,2] = np.multiply(f_sub[fc_i][fc][:,2],f_sub[fc_i][fc][:,1][lasers[l_max]-300])/100
-            # Todo:(2). The (1) fix might solve the copy in q(2)
-
-            test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
-
-
-            ## append the value (with the 0
-            #print(np.argmax(fluorochromes_all[fc][:,2]))
-            peak_wl.append(300+np.argmax(fluorochromes_all[fc][:,2]))
-
-        else:
-            f_counter +=1
-            print("{0} omitted. Relative emission intensity is below {1} %".format(fc,c*100))
-            pass
-
-
-    peak_wl = [i[0] for i in sorted(enumerate(peak_wl), key=lambda x: x[1])]
-    #print(peak_wl)
-    #print(test_list)
-
-    ## Optimize sort by key if this get's to big. Pair the data in set
-    spectra = [f_sub[i] for i in peak_wl]
-
-
-    #print(spectra)
-    """
+        """
         ********************************************************
         *                                                      *
-        *                        OVERLAP                       *
+        *                   EMISSION RECALC                    *
         *                                                      *
         ********************************************************
         """
 
-    auc_spectra = []
+        # In this code the db side have taken care of setting emissions < 0 <- 0
+        fluorochromes_all = db.fetch_fluorchromes_data(colors)
 
-    # for index ind sepectra
 
-    for i in range(len(spectra)):
-        # Get the current name of the fluorochrome
-        current_fc = list(spectra[i].keys())[0]
 
-        auc_spectra.append(np.sum(spectra[i][current_fc][:, 2]))
+        # TODO:(LARS) Optimize by assuming index = i+300?
 
-        #print(np.sum(spectra[i][current_fc], axis=0)[1])
+        # Compared to R we can just access the values directly from a for loop
 
-    ################ AUC OVERLAPS (Loss) ######################
-    auc_overlaps = None # A way to know when it has been initialized
+        for fc_i,fc in enumerate(fluorochromes_all):
 
-    # TODO: Optimize if time > big
-    for i in range(len(spectra)):
-        row = [] # Value placeholder
+            fc_i -= f_counter
+            l_max = [] # Init array
 
-        # Init the data (so it is easier to access)
-        m_i = spectra[i][list(spectra[i].keys())[0]]
+            for laser_wl in lasers:
 
-        for ii in range(len(spectra)):
+                # Extra loop compared to R.. Not good.. Not good - again be optimize with comment above
+                for wl_i in range(len(fluorochromes_all[fc][:,0])):
+                    # Change this to base 300 index
+                    if fluorochromes_all[fc][:,0][wl_i] == laser_wl:
+
+                        l_max.append(fluorochromes_all[fc][:,1][wl_i])
+
+
+            l_max = l_max.index(max(l_max))
+
+            # Check
+
+            if fluorochromes_all[fc][:, 1][lasers[l_max]-300]/100 >= c:
+
+                #TODO:(2)(Lars) should this be cloned??
+                f_sub.append({fc: np.copy(fluorochromes_all[fc])})
+
+                # TODO:(LARS) Do we need all col, or just wv and product of em and ex?
+
+
+
+                # TODO:(1) Fix this so all elements are multiplied with the excitation that corresponds to the max laser!!!
+                f_sub[fc_i][fc][:,2] = np.multiply(f_sub[fc_i][fc][:,2],f_sub[fc_i][fc][:,1][lasers[l_max]-300])/100
+                # Todo:(2). The (1) fix might solve the copy in q(2)
+
+                test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
+
+
+                ## append the value (with the 0
+                #print(np.argmax(fluorochromes_all[fc][:,2]))
+                peak_wl.append(300+np.argmax(fluorochromes_all[fc][:,2]))
+
+            else:
+                f_counter +=1
+                print("{0} omitted. Relative emission intensity is below {1} %".format(fc,c*100))
+                pass
+
+
+        peak_wl = [i[0] for i in sorted(enumerate(peak_wl), key=lambda x: x[1])]
+        #print(peak_wl)
+        #print(test_list)
+
+        ## Optimize sort by key if this get's to big. Pair the data in set
+        spectra = [f_sub[i] for i in peak_wl]
+
+
+        #print(spectra)
+        """
+            ********************************************************
+            *                                                      *
+            *                        OVERLAP                       *
+            *                                                      *
+            ********************************************************
+            """
+
+        auc_spectra = []
+
+        # for index ind sepectra
+
+        for i in range(len(spectra)):
+            # Get the current name of the fluorochrome
+            current_fc = list(spectra[i].keys())[0]
+
+            auc_spectra.append(np.sum(spectra[i][current_fc][:, 2]))
+
+            #print(np.sum(spectra[i][current_fc], axis=0)[1])
+
+        ################ AUC OVERLAPS (Loss) ######################
+        auc_overlaps = None # A way to know when it has been initialized
+
+        # TODO: Optimize if time > big
+        for i in range(len(spectra)):
+            row = [] # Value placeholder
 
             # Init the data (so it is easier to access)
-            m_ii =spectra[ii][list(spectra[ii].keys())[0]]
+            m_i = spectra[i][list(spectra[i].keys())[0]]
 
-            wl_ol = [] # Init list containing wave lengths where i and ii overlap
-            for j in range(len(m_i[:,0])):
-                ## Assume all wl present
-                if m_i[:,2][j]> 0 and m_ii[:,2][j]> 0:
-                    wl_ol.append(j+300)
+            for ii in range(len(spectra)):
 
-            if len(wl_ol) == 0:
-                #wl_ol = 0
-                wl_ol_vec = []
+                # Init the data (so it is easier to access)
+                m_ii =spectra[ii][list(spectra[ii].keys())[0]]
+
+                wl_ol = [] # Init list containing wave lengths where i and ii overlap
+                for j in range(len(m_i[:,0])):
+                    ## Assume all wl present
+                    if m_i[:,2][j]> 0 and m_ii[:,2][j]> 0:
+                        wl_ol.append(j+300)
+
+                if len(wl_ol) == 0:
+                    #wl_ol = 0
+                    wl_ol_vec = []
+                else:
+                    wl_ol = [min(wl_ol)-1] + wl_ol + [max(wl_ol)+1]
+                    # TODO:(3) Assume base 300 in above??. What happens when wl_ol = 0?
+                    wl_ol_vec = [wl - 300 for wl in wl_ol]
+
+                loss_i = m_i[:,2][wl_ol_vec]-m_ii[:,2][wl_ol_vec]
+                ## sum of of the emission where the loss is less or equal to 0
+                loss_i = np.sum([ele for ele,loss in zip(m_i[:,2][wl_ol_vec],loss_i) if loss <= 0])
+
+                loss_i = loss_i/auc_spectra[i]
+
+                loss_ii = m_ii[:, 2][wl_ol_vec] - m_i[:, 2][wl_ol_vec]
+                ## sum of of the emission where the loss is less or equal to 0
+                loss_ii = np.sum([ele for ele, loss in zip(m_ii[:, 2][wl_ol_vec], loss_ii) if loss <= 0])
+
+                loss_ii = loss_ii / auc_spectra[ii ]
+
+                row.append(round(loss_i+loss_ii,8))
+
+
+            if auc_overlaps is not None:
+                # If the auc_overlaps have been made an array then add the row to it
+                auc_overlaps = np.vstack((auc_overlaps , np.array(row)))
+
             else:
-                wl_ol = [min(wl_ol)-1] + wl_ol + [max(wl_ol)+1]
-                # TODO:(3) Assume base 300 in above??. What happens when wl_ol = 0?
-                wl_ol_vec = [wl - 300 for wl in wl_ol]
-
-            loss_i = m_i[:,2][wl_ol_vec]-m_ii[:,2][wl_ol_vec]
-            ## sum of of the emission where the loss is less or equal to 0
-            loss_i = np.sum([ele for ele,loss in zip(m_i[:,2][wl_ol_vec],loss_i) if loss <= 0])
-
-            loss_i = loss_i/auc_spectra[i]
-
-            loss_ii = m_ii[:, 2][wl_ol_vec] - m_i[:, 2][wl_ol_vec]
-            ## sum of of the emission where the loss is less or equal to 0
-            loss_ii = np.sum([ele for ele, loss in zip(m_ii[:, 2][wl_ol_vec], loss_ii) if loss <= 0])
-
-            loss_ii = loss_ii / auc_spectra[ii ]
-
-            row.append(round(loss_i+loss_ii,8))
+                # If the auc_overlaps is equal to None it means it has not yet been initialized. Therefore it is inited as an array
+                auc_overlaps = np.array(row)
 
 
-        if auc_overlaps is not None:
-            # If the auc_overlaps have been made an array then add the row to it
-            auc_overlaps = np.vstack((auc_overlaps , np.array(row)))
+        start = time.time()
+        comb = itertools.combinations(range(auc_overlaps.shape[0]), n)
+        print('Combinations')
+        print(time.time() - start)
+
+        if n <= 6:
+            current_min = 100 # Theoretical max?
+            min_list = []
+            start = time.time()
+            for i,comb_ele in enumerate(comb):
+
+                val = twist_sum(auc_overlaps,list(comb_ele),current_min)
+                if val < current_min:
+                    current_min = val
+                    min_list = comb_ele
+
+            print('Find best')
+            print(time.time()-start)
+            #for f_c in list(min_list):
+                #print(list(spectra[f_c].keys())[0])
 
         else:
-            # If the auc_overlaps is equal to None it means it has not yet been initialized. Therefore it is inited as an array
-            auc_overlaps = np.array(row)
+            print("No algorithm have been developed to handle this n size yet")
 
 
-    start = time.time()
-    comb = itertools.combinations(range(auc_overlaps.shape[0]), n)
-    print('Combinations')
-    print(time.time() - start)
-
-    #print(auc_overlaps[:,test_temp])
-    #print(np.sum(auc_overlaps[:,test_temp]))
-    #test_temp = [0 ,1,11,16,25]
-    #print(twist_sum(auc_overlaps, list(test_temp)))
-
-    if n <= 6:
-        current_min = 100 # Theoretical max?
-        min_list = []
-        start = time.time()
-        for i,comb_ele in enumerate(comb):
-
-            val = twist_sum(auc_overlaps,list(comb_ele),current_min)
-            if val < current_min:
-                current_min = val
-                min_list = comb_ele
-
-        print('Find best')
-        print(time.time()-start)
-        #for f_c in list(min_list):
-            #print(list(spectra[f_c].keys())[0])
-    else:
-        print("No algorithm have been developed to handle this n size yet")
-
-    return plot_data([item for i,item in enumerate(spectra) if i in min_list],lasers)
+        db.add_basic_comb_log(n, lasers, colors, [item for i, item in enumerate(spectra) if i in min_list])
+        return plot_data([item for i,item in enumerate(spectra) if i in min_list],lasers)
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python

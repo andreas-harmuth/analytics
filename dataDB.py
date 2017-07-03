@@ -1,5 +1,5 @@
 from django.db import connection
-import sqlite3
+import sqlite3,json
 import numpy as np
 """
     Main database for data
@@ -32,6 +32,10 @@ class dataDB:
 
         # Create the tabels for fluorochromes_all with the appropriate columns
         sql = 'create table if not exists fluorochromes_all (colorID TEXT, wavelength INTEGER, excitation INTEGER, emission INTEGER)'  # Create the sql tables
+        self.cursor.execute(sql)
+
+        # Create a log for basic combinations
+        sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'  # Create the sql tables
         self.cursor.execute(sql)
         print('Analytics database started')
 
@@ -245,7 +249,73 @@ class dataDB:
         return temp_dict
 
 
+    def add_basic_comb_log(self,cn,l,c,new_data):
+        #sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'
+        laser = json.dumps(l)
+        colors = json.dumps(c)
+        #print(new_data)
+        valid_data_format = {}
+        for keys in new_data:
+            data = keys[(list(keys.keys())[0])]
 
+            # We need to convert away from nparray, as it is not valid json
+            valid_data_format[list(keys.keys())[0]] = {'wavelength':[],'emission':[],'rel_emission':[]}
+
+            # conversion as list comprehension
+            valid_data_format[list(keys.keys())[0]]['wavelength'] = [ele for ele in data[:,0]]
+            valid_data_format[list(keys.keys())[0]]['emission'] = [ele for ele in data[:,1]]
+            valid_data_format[list(keys.keys())[0]]['rel_emission'] = [ele for ele in data[:,2]]
+
+
+        new_data = json.dumps(valid_data_format)
+
+        sql = 'INSERT INTO basic_comb_log (color_numbers, laser, colors, saved_data) VALUES(?,?,?,?)'
+        self.cursor.execute(sql, [cn,laser,colors,new_data])
+
+        self.conn.commit()
+
+    def check_basic_comb_log(self,cn,l,c):
+        laser = json.dumps(l)
+        colors = json.dumps(c)
+
+        sql = """SELECT 
+                    saved_data 
+                FROM 
+                    basic_comb_log
+                WHERE
+                     color_numbers=? AND laser=? AND colors=? 
+              """
+        # It can't sort by lasers and color. We have to do that ourselves
+        # TODO: find a faster alternative?
+        self.cursor.execute(sql,[cn,laser,colors])
+
+        fetched_data = self.cursor.fetchone()
+
+
+
+        if fetched_data == None:
+            # Sometimes the list of colors comes in unsorted due to the nature of the storage of them
+            # this code here checks if this is the case. It's slower than above but is only run if above returns none
+
+            sql = """SELECT
+                            laser, colors, saved_data
+                        FROM 
+                            basic_comb_log
+                        WHERE
+                             color_numbers=? 
+                          """
+            self.cursor.execute(sql, [cn,])
+            for row in self.cursor.fetchall():
+                if set(json.loads(row[0])) == set(json.loads(laser)) and set(json.loads(row[1])) == set(json.loads(colors)): # and set(row[1]) == (colors)
+                    # Return it as a list as the code dependent on this expects this (due to the nature of sqlite return)
+                    return [row[2]]
+
+        return fetched_data
+
+
+
+            #if set(laser) == set(row[1]) and set(colors) == set(row[2]):
+            #    print(row)
 
 
 

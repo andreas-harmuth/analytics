@@ -1,10 +1,19 @@
-import pygal
+import pygal,json
 from pygal.style import Style
 import numpy as np
 from analytics.wl_to_rbg import wavelength_to_rgb
 
-def plot_data(spectra,lasers):
+def plot_data(spectra,lasers,pre_data=False):
     wl_list = []
+
+    if pre_data:
+        spectra = json.loads(spectra[0]) # Load the set from the db in json format --> dict
+        new_spectra = []
+        for data in spectra:
+            new_spectra.append({data:np.column_stack((spectra[data]['wavelength'],spectra[data]['emission'],spectra[data]['rel_emission']))})
+        spectra = new_spectra
+
+
     # Ugly double loop
     for data in spectra:
         name = (list(data.keys())[0])
@@ -23,7 +32,7 @@ def plot_data(spectra,lasers):
         opacity='.6',
         opacity_hover='.9',
         transition='400ms ease-in',
-        plot_background='transparent',
+        background='transparent',
         foreground_subtle='#D1DAE3',
         colors=wl_list)
     xy_chart = pygal.XY(style=custom_style,max_scale=6)
