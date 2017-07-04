@@ -16,7 +16,7 @@ import numpy as np
 import itertools, time
 
 from analytics.plot_bestfit import plot_data
-
+from analytics.matlibplot_bestfit import matplot_data
 # Using base 300 index
 
 
@@ -39,7 +39,7 @@ class Overlap:
         self.overlap.appendO(val)
 
 
-# TODO: class all these fucntions
+# TODO: class all these functions
 def twist_sum(auc_overlaps,comb,c_min):
 
     # TODO: implement the the search part as well
@@ -67,14 +67,21 @@ def get_spectra(i):
 def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
 
-
-
     #start = time.time()
+
+    # Connect to database
     db = dataDB()
-    pre_data_check = db.check_basic_comb_log(n,lasers,colors) # Has the data been evaluated before?
+
+    # Check whether the specific combination of lasers and colors has been evaluated before
+    pre_data_check = db.check_basic_comb_log(n,lasers,colors)
+
+    # If the combination has been evaluated before then simply plot that result
     if pre_data_check != None:
-        return plot_data(pre_data_check, lasers,pre_data = True)
+
+        return plot_data(pre_data_check, lasers,pre_data = True),matplot_data(pre_data_check, lasers,pre_data = True)
         pass
+
+    # If it haven't been evaluate then evaluate it
     else:
         f_counter = 0
         f_sub = [] # Create the sub data as list
@@ -99,26 +106,29 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
         # TODO:(LARS) Optimize by assuming index = i+300?
 
         # Compared to R we can just access the values directly from a for loop
-
         for fc_i,fc in enumerate(fluorochromes_all):
 
-            fc_i -= f_counter
+            # As we only want to increment fc_i of valid data, we do this by setting a counter when the data is invalid
+            fc_i -= f_counter # TODO: only have valid counter instead?
+
+
             l_max = [] # Init array
 
             for laser_wl in lasers:
 
                 # Extra loop compared to R.. Not good.. Not good - again be optimize with comment above
                 for wl_i in range(len(fluorochromes_all[fc][:,0])):
-                    # Change this to base 300 index
+                    # TODO: Change this to base 300 index
                     if fluorochromes_all[fc][:,0][wl_i] == laser_wl:
 
                         l_max.append(fluorochromes_all[fc][:,1][wl_i])
 
 
+            # Set l_max to the index of the biggest l_max
             l_max = l_max.index(max(l_max))
 
-            # Check
 
+            # if the relative emission is higher than the constant c then proceed
             if fluorochromes_all[fc][:, 1][lasers[l_max]-300]/100 >= c:
 
                 #TODO:(2)(Lars) should this be cloned??
@@ -135,11 +145,10 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
                 test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
 
 
-                ## append the value (with the 0
-                #print(np.argmax(fluorochromes_all[fc][:,2]))
                 peak_wl.append(300+np.argmax(fluorochromes_all[fc][:,2]))
 
             else:
+                # If the relative emission is less than that of c then print it and increment the f_counter-
                 f_counter +=1
                 print("{0} omitted. Relative emission intensity is below {1} %".format(fc,c*100))
                 pass
@@ -245,15 +254,13 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
             print('Find best')
             print(time.time()-start)
-            #for f_c in list(min_list):
-                #print(list(spectra[f_c].keys())[0])
 
         else:
             print("No algorithm have been developed to handle this n size yet")
 
-
         db.add_basic_comb_log(n, lasers, colors, [item for i, item in enumerate(spectra) if i in min_list])
-        return plot_data([item for i,item in enumerate(spectra) if i in min_list],lasers)
+        plt_data = [item for i, item in enumerate(spectra) if i in min_list]
+        return plot_data(plt_data,lasers),matplot_data(plt_data, lasers)
 
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
 #0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
