@@ -11,12 +11,16 @@
 #                                               #
 #################################################
 
+
+#TODO:(BUG) 355,405,488,561,642; graph not right; check R
+
 from analytics.dataDB import dataDB
 import numpy as np
 import itertools, time
 
 from analytics.plot_bestfit import plot_data
 from analytics.matlibplot_bestfit import matplot_data
+from analytics.spectral_overlapper_optimized import fluorochrome_analyzed,auc_overlaps_fun
 # Using base 300 index
 
 
@@ -27,6 +31,8 @@ wl | Ex | Em
 
 
 """
+
+
 
 
 
@@ -72,6 +78,8 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
     # Connect to database
     db = dataDB()
 
+
+
     # Check whether the specific combination of lasers and colors has been evaluated before
     pre_data_check = db.check_basic_comb_log(n,lasers,colors)
 
@@ -102,11 +110,15 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
         fluorochromes_all = db.fetch_fluorchromes_data(colors)
 
 
-
         # TODO:(LARS) Optimize by assuming index = i+300?
-
         # Compared to R we can just access the values directly from a for loop
         for fc_i,fc in enumerate(fluorochromes_all):
+            tmp_val = fluorochrome_analyzed(fc,fluorochromes_all[fc],'clone',lasers)
+            if tmp_val.valid:
+                test_list.append(tmp_val)
+            else:
+                print("{0} omitted. Relative emission intensity is below {1} %".format(tmp_val.name, c * 100))
+
 
             # As we only want to increment fc_i of valid data, we do this by setting a counter when the data is invalid
             fc_i -= f_counter # TODO: only have valid counter instead?
@@ -126,7 +138,10 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
             # Set l_max to the index of the biggest l_max
             l_max = l_max.index(max(l_max))
-
+            #if fc == 'Alexa Fluor 488':
+                #te = fluorochrome_analyzed(fc,fluorochromes_all[fc],'clone',lasers)
+                #te.debug(fluorochromes_all[fc][:,2])
+                #print(fc,fluorochromes_all[fc][:, 2])
 
             # if the relative emission is higher than the constant c then proceed
             if fluorochromes_all[fc][:, 1][lasers[l_max]-300]/100 >= c:
@@ -139,10 +154,11 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
 
                 # TODO:(1) Fix this so all elements are multiplied with the excitation that corresponds to the max laser!!!
-                f_sub[fc_i][fc][:,2] = np.multiply(f_sub[fc_i][fc][:,2],f_sub[fc_i][fc][:,1][lasers[l_max]-300])/100
+
+                f_sub[fc_i][fc][:,2] =np.multiply(f_sub[fc_i][fc][:,2],f_sub[fc_i][fc][:,1][lasers[l_max]-300])/100
                 # Todo:(2). The (1) fix might solve the copy in q(2)
 
-                test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
+                #test_list.append((300+np.argmax(fluorochromes_all[fc],axis=0)[2],fc))
 
 
                 peak_wl.append(300+np.argmax(fluorochromes_all[fc][:,2]))
@@ -150,8 +166,14 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
             else:
                 # If the relative emission is less than that of c then print it and increment the f_counter-
                 f_counter +=1
+                print('test')
                 print("{0} omitted. Relative emission intensity is below {1} %".format(fc,c*100))
                 pass
+
+        ## Sort the list
+        test_list.sort()
+
+
 
 
         peak_wl = [i[0] for i in sorted(enumerate(peak_wl), key=lambda x: x[1])]
@@ -160,6 +182,7 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
         ## Optimize sort by key if this get's to big. Pair the data in set
         spectra = [f_sub[i] for i in peak_wl]
+
 
 
         #print(spectra)
@@ -175,13 +198,20 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
 
         # for index ind sepectra
 
-        for i in range(len(spectra)):
+
+        print("-" * 30)
+        for i,obj in zip(range(len(spectra)),test_list):
             # Get the current name of the fluorochrome
             current_fc = list(spectra[i].keys())[0]
 
             auc_spectra.append(np.sum(spectra[i][current_fc][:, 2]))
 
-            #print(np.sum(spectra[i][current_fc], axis=0)[1])
+
+
+            #print(current_fc,np.sum(spectra[i][current_fc][:, 2]))
+            #print(obj.name,obj.total_area)
+
+
 
         ################ AUC OVERLAPS (Loss) ######################
         auc_overlaps = None # A way to know when it has been initialized
@@ -234,6 +264,8 @@ def spectral_overlapper(r,n,colors,lasers,c = 0.1):
             else:
                 # If the auc_overlaps is equal to None it means it has not yet been initialized. Therefore it is inited as an array
                 auc_overlaps = np.array(row)
+        auc_overlaps = auc_overlaps_fun(test_list)
+
 
 
         start = time.time()
