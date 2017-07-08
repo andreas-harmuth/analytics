@@ -20,6 +20,7 @@ def calibrate_data(M,precision = 10):
 
 
 def matplot_data(spectra,lasers,pre_data=False):
+    return None
     sns.set(color_codes=True) #?
 
     wl_list = []

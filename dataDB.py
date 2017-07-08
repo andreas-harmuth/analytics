@@ -1,4 +1,3 @@
-from django.db import connection
 import sqlite3,json
 import numpy as np
 """

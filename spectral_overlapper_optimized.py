@@ -2,7 +2,7 @@
 # Index 300
 
 import numpy as np
-
+from analytics.wl_to_rbg import wavelength_to_rgb
 
 
 class fluorochrome_analyzed:
@@ -13,7 +13,7 @@ class fluorochrome_analyzed:
         self.name = name
         self.M = np.copy(matrix)
         self.type = type
-        self.test_val = matrix[:,2]
+
 
         # Find max laser
         max_list = [self.M[:, 1][laser_wl - 300] for laser_wl in lasers]
@@ -39,6 +39,14 @@ class fluorochrome_analyzed:
 
     def debug(self):
         print(self.__dict__)
+
+    def download_return(self):
+        return {'rgb'       : wavelength_to_rgb(self.peak_wl),
+                'name'      : self.name,
+                'wavelength': [a for a in self.M[:, 0]],
+                'excitation': [a for a in self.M[:, 1]],
+                'emission'  : [a for a in self.M[:,2]]
+                }
 
 
 def auc_overlaps_fun(spectra):
