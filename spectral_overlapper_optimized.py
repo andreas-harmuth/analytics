@@ -6,7 +6,7 @@ from analytics.wl_to_rbg import wavelength_to_rgb
 
 
 class fluorochrome_analyzed:
-
+    __slots__ = ['c', 'name', 'M','type','l_max_laser','valid','peak_wl','total_area']
 
     def __init__(self, name, matrix, type, lasers):
         self.c = 0.1
@@ -90,7 +90,7 @@ def auc_overlaps_fun(spectra):
 
             loss_ii = loss_ii / spectra[ii].total_area
 
-            row.append(round(loss_i + loss_ii, 8))
+            row.append(loss_i + loss_ii)
 
         if auc_overlaps is not None:
             # If the auc_overlaps have been made an array then add the row to it

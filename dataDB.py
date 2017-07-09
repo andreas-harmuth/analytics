@@ -12,7 +12,6 @@ def find_needle(needle,haystack):
 
 
     for index,hay in enumerate(haystack):
-        #print(index,hay)
         if needle == hay:
             # return index
             return index
@@ -252,25 +251,16 @@ class dataDB:
         #sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'
         laser = json.dumps(l)
         colors = json.dumps(c)
-        #print(new_data)
-        valid_data_format = {}
-        for keys in new_data:
-            data = keys[(list(keys.keys())[0])]
-
-            # We need to convert away from nparray, as it is not valid json
-            valid_data_format[list(keys.keys())[0]] = {'wavelength':[],'emission':[],'rel_emission':[]}
-
-            # conversion as list comprehension
-            valid_data_format[list(keys.keys())[0]]['wavelength'] = [ele for ele in data[:,0]]
-            valid_data_format[list(keys.keys())[0]]['emission'] = [ele for ele in data[:,1]]
-            valid_data_format[list(keys.keys())[0]]['rel_emission'] = [ele for ele in data[:,2]]
 
 
-        new_data = json.dumps(valid_data_format)
+        new_data_list = json.dumps([obj_data.name for obj_data in new_data])
+
+
+
 
         sql = 'INSERT INTO basic_comb_log (color_numbers, laser, colors, saved_data) VALUES(?,?,?,?)'
-        self.cursor.execute(sql, [cn,laser,colors,new_data])
 
+        self.cursor.execute(sql, [cn,laser,colors,new_data_list])
         self.conn.commit()
 
     def check_basic_comb_log(self,cn,l,c):
@@ -313,8 +303,7 @@ class dataDB:
 
 
 
-            #if set(laser) == set(row[1]) and set(colors) == set(row[2]):
-            #    print(row)
+
 
 
 
