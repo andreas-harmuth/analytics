@@ -29,7 +29,8 @@ class dataDB:
         self.cursor = self.conn.cursor()
 
         # Create the tabels for fluorochromes_all with the appropriate columns
-        sql = 'create table if not exists fluorochromes_all (colorID TEXT, wavelength INTEGER, excitation INTEGER, emission INTEGER)'  # Create the sql tables
+        sql = 'create table if not exists fluorochromes_all (colorID TEXT, wavelength INTEGER, excitation INTEGER,' \
+              ' emission INTEGER, category TEXT, suggest INTEGER)'  # Create the sql tables
         self.cursor.execute(sql)
 
         # Create a log for basic combinations
@@ -42,21 +43,22 @@ class dataDB:
     # Todo: delete (hashed table of all data contains this)
     def color_names(self):
         # Run the SQL that takes all the information from the fluorochromes_all table
-        sql = 'SELECT colorID FROM fluorochromes_all'
+        sql = 'SELECT colorID,category,suggest FROM fluorochromes_all'
         self.cursor.execute(sql)
 
         # List of names
         names_list = list()
-
+        pass_list = list()
         # Fetch all the information and hash it
         for row in self.cursor.fetchall():
 
             # Append the cell corresponding to the colorID-name
-            names_list.append(row[0])
-
+            if row[0] not in pass_list:
+                names_list.append({"name":row[0],"category":row[1],"suggest":1==row[2]})
+                pass_list.append(row[0])
         # Set returns the unit set of name. We list it after to get the output as a list
         # Todo: Fix the algorithm, we check if the data is already in names_list
-        return list(set(names_list))
+        return names_list
 
 
 
@@ -307,9 +309,13 @@ class dataDB:
 
 
 
+
+
+
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
-#db = dataDB()
+
+
 #db.update_data('./data.txt') # Update the database with given data
 
 #db.fetch_fluorchromes_data_test(1)
