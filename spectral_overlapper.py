@@ -12,11 +12,13 @@
 #################################################
 
 
-#TODO:(BUG) 355,405,488,561,642; graph not right; check R
+
 
 from analytics.dataDB import dataDB
 import numpy as np
 import itertools, time,json
+from multiprocessing import Process, Queue
+
 
 from analytics.plot_bestfit import plot_data, advanced_plot_data
 from analytics.matlibplot_bestfit import matplot_data
@@ -34,13 +36,27 @@ wl | Ex | Em
 """
 
 
-
+def choose(n, k):
+    """
+    A fast way to calculate binomial coefficients by Andrew Dalke (contrib).
+    """
+    if 0 <= k <= n:
+        ntok = 1
+        ktok = 1
+        for t in range(1, min(k, n - k) + 1):
+            ntok *= n
+            ktok *= t
+            n -= 1
+        return ntok // ktok
+    else:
+        return 0
 
 
 def twist_sum(auc_overlaps,comb,c_min):
 
     # TODO: implement the the search part as well
     counter = 0
+
     n = len(comb)
 
     for j in range(n-1):
@@ -56,7 +72,19 @@ def twist_sum(auc_overlaps,comb,c_min):
     return counter
 
 
+def process_search(auc_overlaps, comb,q,name):
 
+    current_min = 10000  # Theoretical max?
+    min_list = []
+
+    for i, comb_ele in enumerate(comb):
+
+        val = twist_sum(auc_overlaps, list(comb_ele), current_min)
+        if val < current_min:
+            current_min = val
+            min_list = comb_ele
+
+    q.put([current_min,min_list])
 
 # TODO: class all these functions
 def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
@@ -86,13 +114,7 @@ def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
     ## If the number of col having a sum over 1 is more than n, then it's valid.
     for kk in comb:
 
-        """
-        row = []
-        for li in mark_list:
 
-            row.append(int(kk in li))
-        arr = np.append(arr, np.array([row]), axis=0)
-        """
         arr = np.append(arr, np.array([
             [int(kk in li) for li in mark_list]
         ]), axis=0)
@@ -107,10 +129,9 @@ def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
 
 
 
-def spectral_overlapper(n,colors,lasers,c = 0.1):
+def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
 
 
-    #start = time.time()
 
     # Connect to database
     db = dataDB()
@@ -118,18 +139,22 @@ def spectral_overlapper(n,colors,lasers,c = 0.1):
 
 
     # Check whether the specific combination of lasers and colors has been evaluated before
-    pre_data_check = db.check_basic_comb_log(n,lasers,colors)
+    pre_data_check = db.extended_check_basic_comb_log(n,lasers,colors)
+
 
     # If the combination has been evaluated before then simply plot that result
     if pre_data_check != None:
 
-        fluorochromes_all = db.fetch_fluorchromes_data(json.loads(pre_data_check[0]))
+        # Find all the fluorochromes data
+        fluorochromes_all = db.fetch_fluorchromes_data(json.loads(pre_data_check))
 
-        fc_list = []
-        for fc in fluorochromes_all:
-            fc_list.append(fluorochrome_analyzed(fc,fluorochromes_all[fc],'clone',lasers))
+        # Create a list of fc objects
+        fc_list = [fluorochrome_analyzed(fc,fluorochromes_all[fc],'clone',lasers) for fc in fluorochromes_all]
 
+        # Create the list for download
         download_list = [obj.download_return() for obj in fc_list]
+
+        # Return everything
         return advanced_plot_data(fc_list , lasers,pre_data = True),matplot_data(fc_list , lasers,pre_data = True),\
                spillover_table(list(range(len(fc_list))), fc_list),download_list
         pass
@@ -138,54 +163,86 @@ def spectral_overlapper(n,colors,lasers,c = 0.1):
     else:
 
 
-
-        test_list = [] # For debugging
-
+        # Init the list
         fc_list = []
 
 
         # In this code the db side have taken care of setting emissions < 0 <- 0
         fluorochromes_all = db.fetch_fluorchromes_data(colors)
 
+
+        # If the fluorochrome is valid at the given laser then add it to the list
         for fc in fluorochromes_all:
             fc_obj = fluorochrome_analyzed(fc, fluorochromes_all[fc], 'clone', lasers)
+
             if fc_obj.valid:
                 fc_list.append(fc_obj)
             else:
+                # Todo: return list?
+                # Tell if has been omitted
                 print("{0} omitted. Relative emission intensity is below {1} %".format(fc_obj.name, c * 100))
 
         ## Sort the list
         fc_list.sort()
 
+
+        # Calculate the overlapc
         auc_overlaps = auc_overlaps_fun(fc_list)
 
+        # Get number of rows
+        r = auc_overlaps.shape[0]
 
-
-
-
-
-
+        # Get the expected size of the generator
+        size = choose(r, n)
         start = time.time()
-        comb = itertools.combinations(range(auc_overlaps.shape[0]), n)
-        print('Combinations')
-        print(time.time() - start)
 
-        if n <= 9:
-            current_min = 100 # Theoretical max?
-            min_list = []
-            start = time.time()
-            for i,comb_ele in enumerate(comb):
 
-                val = twist_sum(auc_overlaps,list(comb_ele),current_min)
-                if val < current_min:
-                    current_min = val
-                    min_list = comb_ele
+        # Running 4 process
+        proc = 4
+        splitter = size // proc # Diving the size by proc and return the integer value
+        rest_split = size % proc # get the remainder
+        comb = itertools.combinations(range(r), n) # Create the generator
 
-            print('Find best')
-            print(time.time()-start)
 
-        else:
-            print("No algorithm have been developed to handle this n size yet")
+        main_list = [] # Create an empty list to append to
+        for i in range(proc):
+            if i == proc - 1:
+                itertools.islice(comb, splitter * i, splitter * (i + 1) + rest_split)
+
+            main_list.append(itertools.islice(comb, splitter * i, splitter * (i + 1)))
+
+        # main_list [itertools.islice(comb, splitter * i, splitter * (i + 1) + rest_split) if i != proc - 1 else
+        #  main_list.append(itertools.islice(comb, splitter * i, splitter * (i + 1))) for i in range(proc)]
+
+
+        q = Queue()
+        for i, sub_list in enumerate(main_list):
+
+            p = Process(target=process_search, args=(auc_overlaps,sub_list, q, "sub {0}".format(i)))
+            p.Daemon = True
+            p.start()
+
+        for tmp in main_list:
+            p.join()
+
+        res = []
+
+        ## Todo; check res length instead, or add timeout
+        run_time = time.time()
+
+        while True:
+            res.append(q.get())
+            if len(res) == 4:
+                break
+            if run_time+time_out >= time.time():
+                # Todo: what to return?
+                return
+        min_list = min(res, key = lambda t: t[0])[1]
+
+        print('Find best')
+        print(time.time()-start)
+
+
 
 
         plt_data = [fc_list[i] for i in min_list]
@@ -236,31 +293,35 @@ def spectral_overlapper_advanced(n, markers, lasers, c=0.1):
 
 
     start = time.time()
-    comb = itertools.combinations(range(auc_overlaps.shape[0]), n)
+    r = auc_overlaps.shape[0]
+    comb = itertools.combinations(range(r), n)
+
     print('Combinations')
     print(time.time() - start)
 
-    #def twist_sum(auc_overlaps, comb, c_min):
 
 
-    if n <= 6:
-        current_min = 100  # Theoretical max?
-        min_list = []
-        start = time.time()
-        for i, comb_ele in enumerate(comb):
 
-            val = adv_twist_sum(auc_overlaps, list(comb_ele), current_min,fc_list_by_index)
 
-            if val < current_min:
 
-                current_min = val
-                min_list = comb_ele
+    current_min = 100  # Theoretical max?
+    min_list = []
+    start = time.time()
 
-        print('Find best')
-        print(time.time() - start)
+    for i, comb_ele in enumerate(comb):
 
-    else:
-        print("No algorithm have been developed to handle this n size yet")
+        val = adv_twist_sum(auc_overlaps, list(comb_ele), current_min,fc_list_by_index)
+
+        if val < current_min:
+
+            current_min = val
+            min_list = comb_ele
+
+    print('Find best')
+    print(time.time() - start)
+
+
+
 
     plt_data = [fc_list[i] for i in min_list]
 

@@ -9,7 +9,7 @@ class fluorochrome_analyzed:
     __slots__ = ['c', 'name', 'M','type','l_max_laser','valid','peak_wl','total_area']
 
     def __init__(self, name, matrix, type, lasers):
-        self.c = 0.1
+        self.c = 0.2
         self.name = name
         self.M = np.copy(matrix)
         self.type = type

@@ -36,7 +36,7 @@ class dataDB:
         # Create a log for basic combinations
         sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'  # Create the sql tables
         self.cursor.execute(sql)
-        print('Analytics database started')
+
 
 
 
@@ -57,7 +57,7 @@ class dataDB:
                 names_list.append({"name":row[0],"category":row[1],"suggest":1==row[2]})
                 pass_list.append(row[0])
         # Set returns the unit set of name. We list it after to get the output as a list
-        # Todo: Fix the algorithm, we check if the data is already in names_list
+
         return names_list
 
 
@@ -118,10 +118,6 @@ class dataDB:
 
 
                 # This is to optimize the next, next (*) if
-                #print(data[0])
-
-                #print(all_data[data[0]][0])
-                #print(all_data[data[0]])
                 needle_index = find_needle(int(data[1]),all_data[data[0]][0])
 
 
@@ -234,7 +230,7 @@ class dataDB:
                 row[3] = 0
 
             try:
-                # Todo: Timetest to see if try/except is faster or slower than (if x in dict).
+
 
                 # If a key does exist for the dictionary then append the row to the correct matrix
                 temp_dict[row[0]] = np.vstack((temp_dict[row[0]], row[1:4]))
@@ -265,44 +261,51 @@ class dataDB:
         self.cursor.execute(sql, [cn,laser,colors,new_data_list])
         self.conn.commit()
 
-    def check_basic_comb_log(self,cn,l,c):
-        laser = json.dumps(l)
-        colors = json.dumps(c)
 
+
+    # Check if any subset of the combination is already in the database
+    def extended_check_basic_comb_log(self, cn, l, c):
+
+        # Dumb the laser, so it matches the format of SQL-data. Remember this is sorted
+        laser = json.dumps(l)
+
+        # We are not dumbing the laser as we want to check it as a regular list later
+        colors = c
+
+        # Prepare the query
         sql = """SELECT 
-                    saved_data 
+                    colors, saved_data
                 FROM 
                     basic_comb_log
                 WHERE
-                     color_numbers=? AND laser=? AND colors=? 
-              """
-        # It can't sort by lasers and color. We have to do that ourselves
-        # TODO: find a faster alternative?
-        self.cursor.execute(sql,[cn,laser,colors])
-
-        fetched_data = self.cursor.fetchone()
+                     color_numbers=? AND laser=?"""
 
 
 
-        if fetched_data == None:
-            # Sometimes the list of colors comes in unsorted due to the nature of the storage of them
-            # this code here checks if this is the case. It's slower than above but is only run if above returns none
+        # Fetch all data with this specific laser and n value. This is the smallest sample we can obtain from the given info
+        self.cursor.execute(sql, [cn, laser])
 
-            sql = """SELECT
-                            laser, colors, saved_data
-                        FROM 
-                            basic_comb_log
-                        WHERE
-                             color_numbers=? 
-                          """
-            self.cursor.execute(sql, [cn,])
-            for row in self.cursor.fetchall():
-                if set(json.loads(row[0])) == set(json.loads(laser)) and set(json.loads(row[1])) == set(json.loads(colors)): # and set(row[1]) == (colors)
-                    # Return it as a list as the code dependent on this expects this (due to the nature of sqlite return)
-                    return [row[2]]
 
-        return fetched_data
+        # Fetch all the lasers
+        fetched_data_set = self.cursor.fetchall()
 
+
+
+        for fetched_data in fetched_data_set:
+
+            # Check if the all the elements in the input is present in the color combination of the current comb. Also check
+            # if the resulting colors are present in the results
+            # fetched_data[0] = colors (fc)
+            # fetched_data[1] = results
+
+            if all(fc in json.loads(fetched_data[0]) for fc in colors) and all(fc in colors for fc in json.loads(fetched_data[1])):
+
+                # If any is found, then return the list.
+                return fetched_data[1]
+
+
+
+        return None
 
 
 
