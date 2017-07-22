@@ -194,19 +194,10 @@ def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
     # If the combination has been evaluated before then simply plot that result
     if pre_data_check != None:
 
-        # Find all the fluorochromes data
-        fluorochromes_all = db.fetch_fluorchromes_data(json.loads(pre_data_check))
-
         # Create a list of fc objects
-        fc_list = [fluorochrome_analyzed(fc,fluorochromes_all[fc],'clone',lasers) for fc in fluorochromes_all]
 
-        # Create the list for download
-        download_list = [obj.download_return() for obj in fc_list]
+        return json.loads(pre_data_check)
 
-        # Return everything
-        return advanced_plot_data(fc_list , pl_lasers,pre_data = True),matplot_data(fc_list , pl_lasers,pre_data = True),\
-               spillover_table(list(range(len(fc_list))), fc_list),download_list
-        pass
 
     # If it haven't been evaluate then evaluate it
     else:
@@ -291,25 +282,16 @@ def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
         # Find the combination that is smallest - each process returns the smallest list of the chunck it evaluated
         min_list = min(res, key = lambda t: t[0])[1]
 
-
-
-        db.speed_test(time.time()-run_time,size,'macBookPro')
-
-
-
-        # Find the color object corresponding to the list
-        plt_data = [fc_list[i] for i in min_list]
-
+        # Add the time and result to the database
+        db.speed_test(time.time()-run_time,size,'Macbook pro')
 
         # Add the combination and result to the database
-        db.add_basic_comb_log(n, lasers, colors, plt_data)
+        db.add_basic_comb_log(n, lasers, colors, [fc_list[i] for i in min_list])
 
-        # Create the list of downloadable material
-        download_list = [obj.download_return() for obj in fc_list]
+        # Return the names of the optimal colors
+        print(list([fc_list[i].name for i in min_list]))
+        return list([fc_list[i].name for i in min_list])
 
-        # Return everything
-        return advanced_plot_data(plt_data, pl_lasers),matplot_data(plt_data, pl_lasers),spillover_table(min_list, plt_data),\
-               download_list
 
 
 
@@ -390,7 +372,7 @@ def spectral_overlapper_advanced(n, extra_markers, markers, lasers, c=0.1):
 
     plt_data = [fc_list[i] for i in min_list]
 
-    return advanced_plot_data(plt_data, lasers),spillover_table(min_list,plt_data)
+    return advanced_plot_data(plt_data, lasers),spillover_table(plt_data)
 
 
 
@@ -403,3 +385,28 @@ def spectral_overlapper_advanced(n, extra_markers, markers, lasers, c=0.1):
 #spectral_overlapper(0,5,1,lasers)
 #print("Total time")
 #print(time.time()-start)
+
+
+def so_spill_over_table(lasers,colors):
+    db = dataDB()
+
+    # In this code the db side have taken care of setting emissions < 0 <- 0
+    fluorochromes_all = db.fetch_fluorchromes_data(colors)
+
+    # Init the list and get the values
+    fc_list = [fluorochrome_analyzed(fc, fluorochromes_all[fc], 'flow', lasers) for fc in fluorochromes_all]
+
+    # Return the spillover table    # Create the list for download
+    return spillover_table(fc_list),[obj.download_return() for obj in fc_list]
+
+
+def so_plot(lasers,colors):
+    db = dataDB()
+
+    # In this code the db side have taken care of setting emissions < 0 <- 0
+    fluorochromes_all = db.fetch_fluorchromes_data(colors)
+
+    # Init the list and get the values
+    fc_list = [fluorochrome_analyzed(fc, fluorochromes_all[fc], 'flow', lasers) for fc in fluorochromes_all]
+
+    return advanced_plot_data(fc_list, lasers)

@@ -1,6 +1,6 @@
 #import numpy as np
 
-def spillover_table(min_list, fc_list_sorted):
+def spillover_table(fc_list_sorted):
     spillover_matrix = []
 
 
