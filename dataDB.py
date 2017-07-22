@@ -37,7 +37,9 @@ class dataDB:
         sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'  # Create the sql tables
         self.cursor.execute(sql)
 
-
+        # Create a log for performance
+        sql = 'create table if not exists performance_log (time_in_ms REAL, combinations INTEGER , processor TEXT)'  # Create the sql tables
+        self.cursor.execute(sql)
 
 
     # Todo: delete (hashed table of all data contains this)
@@ -308,8 +310,67 @@ class dataDB:
         return None
 
 
+    def update_suggest(self,fc_list):
+        counter = 0
+        for fc in fc_list:
+
+            sql = """UPDATE
+              fluorochromes_all
+            SET
+              suggest = ?
+            WHERE
+              colorID = ?
+            """
+            counter +=1
+            self.cursor.execute(sql, [fc_list[fc],fc])
+
+        print(counter)
+        self.conn.commit()
 
 
+
+
+
+
+    def speed_test(self,t,c,p):
+        # t = time
+        # c = combinations
+        # p = processor
+
+        sql = 'INSERT INTO performance_log (time_in_ms, combinations, processor) VALUES(?,?,?)'
+        self.cursor.execute(sql, [t,c,p])
+        print(t,c,p)
+
+
+
+    def get_performance(self):
+        sql = 'SELECT * FROM performance_log ORDER BY time_in_ms'
+
+        self.cursor.execute(sql)
+
+        data_dict = {}
+
+        for row in self.cursor.fetchall():
+            data_dict.setdefault(row[2],{'time':[],'combinations':[]})['time'].append(row[0])
+            data_dict[row[2]]['combinations'].append(row[1])
+
+        return data_dict
+
+
+
+    def get_statistics(self):
+
+        sql = " SELECT * FROM basic_comb_log"
+
+        # Fetch all data
+        self.cursor.execute(sql)
+
+
+        combinations = len(self.cursor.fetchall())
+        fluorochromes = len(self.color_names())
+
+        return {'combinations'      :   combinations,
+                'fluorochromes '    :   fluorochromes }
 
 
 
@@ -318,7 +379,24 @@ class dataDB:
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
 
+fc_list = {
+    'Alexa Fluor 350':0,
+    'Alexa Fluor 405':0,
+    'Alexa Fluor 430':0,
+    'Alexa Fluor 514':0,
+    'Alexa Fluor 532':0,
+    'Alexa Fluor 546':0,
+    'Alexa Fluor 568':0,
+    'Alexa Fluor 610':0,
+    'Alexa Fluor 633':0,
+    'Alexa Fluor 635':0,
+    'Alexa Fluor 660':0,
+    'Alexa Fluor 750':0,
+    'Alexa Fluor 790':0,
+}
+#db = dataDB()
 
+#db.update_suggest(fc_list)
 #db.update_data('./data.txt') # Update the database with given data
 
 #db.fetch_fluorchromes_data_test(1)

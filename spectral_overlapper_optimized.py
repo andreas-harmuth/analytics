@@ -9,7 +9,7 @@ class fluorochrome_analyzed:
     __slots__ = ['c', 'name', 'M','type','l_max_laser','valid','peak_wl','total_area']
 
     def __init__(self, name, matrix, type, lasers):
-        self.c = 0.2
+        self.c = 0.1
         self.name = name
         self.M = np.copy(matrix)
         self.type = type
@@ -101,3 +101,42 @@ def auc_overlaps_fun(spectra):
             auc_overlaps = np.array(row)
 
     return auc_overlaps
+
+
+def auc_spill_fun(fc_list):
+    auc_overlaps = None
+
+
+    for main_color in fc_list:
+
+        mc = main_color.M[:, 2]
+        loss_row = []
+
+        for sub_color in fc_list:
+            if sub_color.name == main_color.name:
+                cell = 100
+            else:
+                loss = 0
+                sc = sub_color.M[:, 2]
+                for i in range(len(mc)):
+                    if mc[i] > 0 and sc[i] > 0:
+                        loss += min(mc[i], sc[i])
+
+                cell = round(loss / sub_color.total_area)
+
+            loss_row.append(cell)
+
+        if auc_overlaps is not None:
+            # If the auc_overlaps have been made an array then add the row to it
+            auc_overlaps = np.vstack((auc_overlaps, np.array(loss_row)))
+
+        else:
+            # If the auc_overlaps is equal to None it means it has not yet been initialized. Therefore it is inited as an array
+            auc_overlaps = np.array(loss_row)
+
+    return auc_overlaps
+
+
+
+
+
