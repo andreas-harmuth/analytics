@@ -1,4 +1,4 @@
-import sqlite3,json
+import sqlite3,json,itertools
 import numpy as np
 """
     Main database for data
@@ -39,6 +39,23 @@ class dataDB:
 
         # Create a log for performance
         sql = 'create table if not exists performance_log (time_in_ms REAL, combinations INTEGER , processor TEXT)'  # Create the sql tables
+        self.cursor.execute(sql)
+
+
+
+
+        ######## auto generated data #######
+
+        # n range
+        sql = 'create table if not exists agd_n (n INTEGER)'
+        self.cursor.execute(sql)
+
+        # Fluorochromes
+        sql = 'create table if not exists agd_fc (fc TEXT)'
+        self.cursor.execute(sql)
+
+        # Lasers
+        sql = 'create table if not exists agd_lasers (lasers TEXT)'
         self.cursor.execute(sql)
 
 
@@ -283,15 +300,11 @@ class dataDB:
                      color_numbers=? AND laser=?"""
 
 
-
         # Fetch all data with this specific laser and n value. This is the smallest sample we can obtain from the given info
         self.cursor.execute(sql, [cn, laser])
 
-
         # Fetch all the lasers
         fetched_data_set = self.cursor.fetchall()
-
-
 
         for fetched_data in fetched_data_set:
 
@@ -301,11 +314,9 @@ class dataDB:
             # fetched_data[1] = results
 
             if all(fc in json.loads(fetched_data[0]) for fc in colors) and all(fc in colors for fc in json.loads(fetched_data[1])):
-
+                #print("Debug: found")
                 # If any is found, then return the list.
                 return fetched_data[1]
-
-
 
         return None
 
@@ -324,7 +335,7 @@ class dataDB:
             counter +=1
             self.cursor.execute(sql, [fc_list[fc],fc])
 
-        print(counter)
+
         self.conn.commit()
 
 
@@ -339,7 +350,8 @@ class dataDB:
 
         sql = 'INSERT INTO performance_log (time_in_ms, combinations, processor) VALUES(?,?,?)'
         self.cursor.execute(sql, [t,c,p])
-        print(t,c,p)
+        self.conn.commit()
+        #print(t,c,p)
 
 
 
@@ -373,27 +385,63 @@ class dataDB:
                 'fluorochromes '    :   fluorochromes }
 
 
+    def join_combination(self,n_small,n_big,lasers,fc_start = None):
 
+        tables = ['agd_n','agd_fc','agd_lasers']
+        for table in tables:
+                sql = 'DELETE FROM ' + table
+                self.cursor.execute(sql)
+        sql = "DROP TABLE if exists all_options"
+        self.cursor.execute(sql)
+
+        for n in range(n_small,n_big):
+            sql = 'INSERT INTO agd_n (n) VALUES(?)'
+            self.cursor.execute(sql,[n,])
+
+        for laser in lasers:
+            sql = 'INSERT INTO agd_lasers (lasers) VALUES(?)'
+            self.cursor.execute(sql, [json.dumps(laser), ])
+
+        fc_list = [fc['name'] for fc in self.color_names()]
+
+        if fc_start != None:
+            print("Multiple colors")
+            for fc_i in range(len(fc_list)-fc_start,len(fc_list)):
+                print(fc_i)
+
+                m_comb = list(itertools.combinations(range(len(fc_list)), fc_i))
+
+                print(len(m_comb))
+                for comb in m_comb:
+
+
+
+
+                    sql = 'INSERT INTO agd_fc (fc) VALUES(?)'
+
+                    self.cursor.execute(sql, [json.dumps([fc_list[i] for i in comb]), ])
+        else:
+            print("All color only")
+            self.cursor.execute(sql, [json.dumps(fc_list), ])
+
+
+        sql = "CREATE TABLE if not exists all_options as SELECT * FROM agd_n, agd_lasers, agd_fc"
+        self.cursor.execute(sql)
+
+        sql = 'SELECT * FROM all_options'
+
+        self.cursor.execute(sql)
+        comb = self.cursor.fetchall()
+
+        print('The database \"all_options\" have been created. It contains {0} number of solutions (rows).'.format(
+            len(comb)))
+
+        return comb
 
 
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
 
-fc_list = {
-    'Alexa Fluor 350':0,
-    'Alexa Fluor 405':0,
-    'Alexa Fluor 430':0,
-    'Alexa Fluor 514':0,
-    'Alexa Fluor 532':0,
-    'Alexa Fluor 546':0,
-    'Alexa Fluor 568':0,
-    'Alexa Fluor 610':0,
-    'Alexa Fluor 633':0,
-    'Alexa Fluor 635':0,
-    'Alexa Fluor 660':0,
-    'Alexa Fluor 750':0,
-    'Alexa Fluor 790':0,
-}
 #db = dataDB()
 
 #db.update_suggest(fc_list)

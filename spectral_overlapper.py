@@ -20,10 +20,10 @@ import itertools, time,json
 from multiprocessing import Process, Queue
 
 
-from analytics.plot_bestfit import plot_data, advanced_plot_data
-from analytics.matlibplot_bestfit import matplot_data
+from analytics.plot_bestfit import advanced_plot_data
+#from analytics.matlibplot_bestfit import matplot_data
 from analytics.spillover_table import spillover_table
-from analytics.spectral_overlapper_optimized import fluorochrome_analyzed,auc_overlaps_fun,auc_spill_fun
+from analytics.spectral_overlapper_optimized import fluorochrome_analyzed,auc_overlaps_fun
 # Using base 300 index
 
 
@@ -53,7 +53,8 @@ def choose(n, k):
 
 
 def twist_sum(auc_overlaps,comb,c_min):
-    #debub_val = 1.1
+
+    # debub_val = 1.1
     # TODO: implement the the search part as well
     counter = 0
 
@@ -71,6 +72,7 @@ def twist_sum(auc_overlaps,comb,c_min):
                 # no need to do further calculations if the counter is already bigger then then min
                 #print(j)
                 return counter
+
 
     return counter
 
@@ -97,6 +99,16 @@ def process_search(auc_overlaps, comb,q,name):
 
 ################## ADVANCED #################
 
+def assign_markers(markers,arr,fc_name_list):
+    n = len(markers)
+    m_comb = itertools.permutations(range(n))
+    for i in m_comb:
+
+        if sum(arr[:, i].diagonal() > 0) >= n:
+                return {fc_name_list[k]: [markers[j] for j in i][k] for k in range(n)}
+
+
+
 
 
 def matrix_validator(arr, n, m_comb):
@@ -111,12 +123,11 @@ def matrix_validator(arr, n, m_comb):
 
 def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
 
-    # TODO: implement the the search part as well
+
     counter = 0
     n       = len(comb)
-
     m_comb = itertools.permutations(range(n))
-    # todo: n_m = n right?? Check this
+
 
     for j in range(n-1):
         for i in range(j+1,n):
@@ -126,10 +137,8 @@ def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
             if c_min < counter:
                 # no need to do further calculations if the counter is already bigger then then min
                 #print(j)
-                return counter
+                return counter,0
 
-
-    # TODO: Is it needed to
 
     arr = np.empty((0, n), int)
 
@@ -143,18 +152,20 @@ def adv_twist_sum(auc_overlaps,comb,c_min,mark_list):
         ]), axis=0)
 
     if matrix_validator(arr, n, m_comb):
-        return counter
+        return counter,arr
 
     else:
-        return c_min
+        return c_min,0
 
 
 
 
 
 def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
-    start = time.time()
-    pl_lasers = lasers
+
+    # Star the run time
+    run_time = time.time()
+
 
     # Connect to database
     db = dataDB()
@@ -263,7 +274,7 @@ def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
         res = []
 
         ## Todo; check res length instead, or add timeout
-        run_time = time.time()
+
 
         while True:
             # Append a queue to the result list
@@ -289,7 +300,7 @@ def spectral_overlapper(n,colors,lasers,c = 0.2,time_out = 100):
         db.add_basic_comb_log(n, lasers, colors, [fc_list[i] for i in min_list])
 
         # Return the names of the optimal colors
-        print(list([fc_list[i].name for i in min_list]))
+
         return list([fc_list[i].name for i in min_list])
 
 
@@ -304,7 +315,7 @@ def spectral_overlapper_advanced(n, extra_markers, markers, lasers, c=0.1):
 
     for i in range(n):
 
-        markers[str(start_id+i+1)] = {'color': [color['name'] for color in extra_markers['color']]}
+        markers[str(start_id+i+1)] = {'name':'Extra target ' + str(i+1), 'color': [color['name'] for color in extra_markers['color']]}
 
     n = len(markers)
 
@@ -335,56 +346,43 @@ def spectral_overlapper_advanced(n, extra_markers, markers, lasers, c=0.1):
 
     fc_list_by_index = [[fc_list_by_name.index(co) for co in marker['color'] if co not in fc_list_omitted] for marker in markers.values()]
 
+
     # Find the auc_overlaps
     auc_overlaps = auc_overlaps_fun(fc_list)
 
 
-    start = time.time()
+
     r = auc_overlaps.shape[0]
     comb = itertools.combinations(range(r), n)
-
-    print('Combinations')
-    print(time.time() - start)
-
-
-
 
 
 
     current_min = 100  # Theoretical max?
     min_list = []
-    start = time.time()
 
     for i, comb_ele in enumerate(comb):
 
-        val = adv_twist_sum(auc_overlaps, list(comb_ele), current_min,fc_list_by_index)
+        val,t_m = adv_twist_sum(auc_overlaps, list(comb_ele), current_min,fc_list_by_index)
 
         if val < current_min:
 
             current_min = val
             min_list = comb_ele
-
-    print('Find best')
-    print(time.time() - start)
+            target_matrix = t_m
 
 
-
-
-    plt_data = [fc_list[i] for i in min_list]
-
-    return advanced_plot_data(plt_data, lasers),spillover_table(plt_data)
+    return_list = [fc_list[i].name for i in min_list]
 
 
 
+    #def assign_markers(markers, arr, fc_name_list):
+    marker_set = assign_markers([name['name'] for name in markers.values()],target_matrix,return_list)
 
 
-#0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # R
-#0 0 0 1 1 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 4 4 # Python
-#lasers = [355,405,488,561,640]
-#start = time.time()
-#spectral_overlapper(0,5,1,lasers)
-#print("Total time")
-#print(time.time()-start)
+    return return_list,marker_set
+
+
+
 
 
 def so_spill_over_table(lasers,colors):
@@ -400,7 +398,7 @@ def so_spill_over_table(lasers,colors):
     return spillover_table(fc_list),[obj.download_return() for obj in fc_list]
 
 
-def so_plot(lasers,colors):
+def so_plot(lasers,colors, markers=None):
     db = dataDB()
 
     # In this code the db side have taken care of setting emissions < 0 <- 0
@@ -409,4 +407,6 @@ def so_plot(lasers,colors):
     # Init the list and get the values
     fc_list = [fluorochrome_analyzed(fc, fluorochromes_all[fc], 'flow', lasers) for fc in fluorochromes_all]
 
-    return advanced_plot_data(fc_list, lasers)
+    return advanced_plot_data(fc_list, lasers, markers)
+
+

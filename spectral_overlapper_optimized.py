@@ -6,9 +6,10 @@ from analytics.wl_to_rbg import wavelength_to_rgb
 
 
 class fluorochrome_analyzed:
-    __slots__ = ['c', 'name', 'M','type','l_max_laser','valid','peak_wl','total_area']
+    __slots__ = ['c', 'name', 'M','type','l_max_laser','valid','peak_wl','total_area','marker']
 
     def __init__(self, name, matrix, type, lasers):
+        self.marker = ""
         self.c = 0.1
         self.name = name
         self.M = np.copy(matrix)
