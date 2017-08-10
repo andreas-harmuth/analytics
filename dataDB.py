@@ -1,5 +1,6 @@
 import sqlite3,json,itertools
 import numpy as np
+from operator import itemgetter
 """
     Main database for data
     
@@ -20,6 +21,11 @@ def find_needle(needle,haystack):
     return -1
 
 
+
+
+
+
+
 class dataDB:
 
     def __init__(self):
@@ -32,6 +38,7 @@ class dataDB:
         sql = 'create table if not exists fluorochromes_all (colorID TEXT, wavelength INTEGER, excitation INTEGER,' \
               ' emission INTEGER, category TEXT, suggest INTEGER)'  # Create the sql tables
         self.cursor.execute(sql)
+
 
         # Create a log for basic combinations
         sql = 'create table if not exists basic_comb_log (color_numbers INTERGER, laser TEXT, colors TEXT, saved_data TEXT)'  # Create the sql tables
@@ -438,11 +445,90 @@ class dataDB:
 
         return comb
 
+        # Cleans up the database
+    def clean_up(self):
+        sql = 'DROP TABLE IF EXISTS clean_up_copy;'
+        self.cursor.execute(sql)
+
+        sql = 'CREATE TABLE clean_up_copy AS SELECT DISTINCT * FROM basic_comb_log'
+        self.cursor.execute(sql)
+
+        sql = 'SELECT * FROM clean_up_copy'
+
+        self.cursor.execute(sql)
+        rows = self.cursor.fetchall()
+
+        print(rows[1])
+        # row[0] = n
+        # row[1] = laser
+        # row[2] = input colors
+        # row[3] = results
+
+        results_hash = {}
+        print(results_hash)
+        # Sort them in a hashtable
+        for row in rows:
+            results_hash.setdefault(json.dumps([row[0],row[1],row[3]]),[]).append(json.loads(row[2]))
+
+        for results in results_hash:
+
+            if len(results_hash[results]) != 1:
+
+                # Sort the results by the length of the list. It takes the smallest first so we simply reverse it
+                results_hash[results] = sorted(results_hash[results], key=len,reverse=True)
+
+                elim_list = [] # List with indices that will be eliminated
+
+                for index_parent,input_color_list in enumerate(results_hash[results]):
+                    # If a list "under" this list is in # ONLY CHECK UNDER -> write [i-j]
+                    # If the small list is in the big list, then delete the small list
+                    for index, compare_list in enumerate(results_hash[results]):
+                        if all(fc in input_color_list for fc in compare_list) and index != index_parent:
+
+                            elim_list.append(index)
+                if elim_list != []:
+
+                    for index in sorted(elim_list, reverse=True):
+                        del results_hash[results][index]
+
+        sql = "DELETE FROM clean_up_copy"
+        self.cursor.execute(sql)
+
+
+        for results in results_hash:
+
+            row = json.loads(results)
+
+            # row[0] = n
+            # row[1] = laser
+            # row[2] = results
+            # dict[key] = colors
+            laser = json.dumps(row[1])
+
+            new_data_list = row[2]
+
+            for colors in (results_hash[results]):
+                sql = 'INSERT INTO clean_up_copy (color_numbers, laser, colors, saved_data) VALUES(?,?,?,?)'
+
+                self.cursor.execute(sql, [row[0], laser, json.dumps(colors), new_data_list])
+
+        self.conn.commit()
+        # Sort each hashtable by len of inputcolor:
+        #sorted(data, key=itemgetter(1))
+
+
+
+
+
+
+
+
 
 # Test list
 #"7-AAD (7-aminoactinomycin D)", "eFluor 660", "Alexa Fluor 405", "Alexa Fluor 594", "Alexa Fluor 430", "APC-Alexa Fluor 750"
 
-#db = dataDB()
+db = dataDB()
+db.clean_up()
 
 #db.update_suggest(fc_list)
 #db.update_data('./data.txt') # Update the database with given data

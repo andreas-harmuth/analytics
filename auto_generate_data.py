@@ -186,16 +186,16 @@ def speed_results(n,lasers,colors):
 db = dataDB()
 
 # From n
-n_small = 5
+n_small = 7
 
 # To n
-n_big = 14
+n_big = 18
 
 # Processes
 proc = 8
 
 # Lasers
-lasers = [320, 405, 488, 561, 640]
+lasers = [355, 405, 488, 561, 640]
 
 # Levels
 levels = 3
@@ -204,20 +204,23 @@ levels += 1
 
 start = time.time()
 counter = 0
+
+
+
 if __name__ ==  '__main__':
     for n in range(n_small, n_big + 1):
 
         r = [[] for i in range(levels)]
         c = [[] for i in range(levels)]
 
-        all_colors = [color['name'] for color in db.color_names()]
+        all_colors = [color['name'] for color in db.color_names() if color['suggest']==1]
 
         c[0].append(all_colors)
         res, incr = speed_results(n, lasers, c[0][0])
         counter += incr
         r[0].append(res)
         for l in range(1,levels):
-            print("*" * 15 + " Level " + str(l) + " " + "*" * 15)
+            print("*" * 60 + " Level " + str(l) + " " + "*" * 60)
             print()
             for res_i,res in enumerate(r[l-1]):
 
@@ -235,7 +238,7 @@ if __name__ ==  '__main__':
 
                     r[l].append(res)
                     counter += incr
-                print("-"*39)
+                print("-"*129)
 
 
 
